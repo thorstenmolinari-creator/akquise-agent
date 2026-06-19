@@ -302,21 +302,43 @@ async function loadList() {
   showToast('Lade Liste via Graph API...');
   try {
     const token = await getToken();
-    const siteRes = await fetch(`https://graph.microsoft.com/v1.0/sites?search=${encodeURIComponent(new URL(url).hostname)}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const siteData = await siteRes.json();
-    if (!siteData.value?.length) { showToast('SharePoint-Site nicht gefunden'); return; }
-    const siteId = siteData.value[0].id;
     const listName = document.getElementById('list-name').value || 'Akquise Claude';
-    const listsRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists?$filter=displayName eq '${listName}'`, {
-      headers: { Authorization: `Bearer ${token}` }
+    let siteId = null;
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname;
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    if (hostname.includes('-my.sharepoint.com') && pathParts[0] === 'personal') {
+      const userPath = pathParts[1];
+      const siteRes = await fetch('https://graph.microsoft.com/v1.0/sites/' + hostname + ':/personal/' + userPath, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const siteData = await siteRes.json();
+      if (!siteData.id) { showToast('OneDrive-Site nicht gefunden: ' + (siteData.error?.message || '')); return; }
+      siteId = siteData.id;
+    } else {
+      const siteRes = await fetch('https://graph.microsoft.com/v1.0/sites?search=' + encodeURIComponent(hostname), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const siteData = await siteRes.json();
+      if (!siteData.value?.length) { showToast('SharePoint-Site nicht gefunden'); return; }
+      siteId = siteData.value[0].id;
+    }
+    const listsRes = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists?$filter=displayName eq ' + "'" + listName + "'", {
+      headers: { Authorization: 'Bearer ' + token }
     });
     const listsData = await listsRes.json();
-    if (!listsData.value?.length) { showToast(`Liste "${listName}" nicht gefunden`); return; }
+    if (!listsData.value?.length) {
+      const allListsRes = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const allLists = await allListsRes.json();
+      const namen = allLists.value?.map(l => l.displayName).join(', ') || 'keine';
+      showToast('Liste "' + listName + '" nicht gefunden. Verfuegbar: ' + namen);
+      return;
+    }
     const listId = listsData.value[0].id;
-    const itemsRes = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields`, {
-      headers: { Authorization: `Bearer ${token}` }
+    const itemsRes = await fetch('https://graph.microsoft.com/v1.0/sites/' + siteId + '/lists/' + listId + '/items?expand=fields', {
+      headers: { Authorization: 'Bearer ' + token }
     });
     const itemsData = await itemsRes.json();
     items = itemsData.value.map((item, i) => ({
@@ -333,7 +355,7 @@ async function loadList() {
       _siteId: siteId, _listId: listId, _itemId: item.id
     }));
     renderTable();
-    showToast(`${items.length} Einträge geladen ✓`);
+    showToast(items.length + ' Eintraege geladen ✓');
   } catch (e) {
     showToast('Fehler beim Laden: ' + e.message);
     console.error(e);
