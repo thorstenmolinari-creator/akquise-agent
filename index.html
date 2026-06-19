@@ -279,11 +279,17 @@ async function onLoggedIn() {
 window.addEventListener('load', async () => {
   const storedToken = sessionStorage.getItem('access_token');
   const tokenExpires = parseInt(sessionStorage.getItem('token_expires') || '0');
+  const savedUrl = sessionStorage.getItem('list_url');
+  const savedName = sessionStorage.getItem('list_name');
+  if (savedUrl) document.getElementById('list-url').value = savedUrl;
+  if (savedName) document.getElementById('list-name').value = savedName;
   if (handleOAuthCallback()) {
     await onLoggedIn();
+    if (savedUrl) loadList();
   } else if (storedToken && tokenExpires > Date.now()) {
     accessToken = storedToken;
     await onLoggedIn();
+    if (savedUrl) loadList();
   }
 });
 
@@ -354,6 +360,8 @@ async function loadList() {
       status: item.fields?.Status || 'neu',
       _siteId: siteId, _listId: listId, _itemId: item.id
     }));
+    sessionStorage.setItem('list_url', document.getElementById('list-url').value.trim());
+    sessionStorage.setItem('list_name', document.getElementById('list-name').value);
     renderTable();
     showToast(items.length + ' Eintraege geladen ✓');
   } catch (e) {
