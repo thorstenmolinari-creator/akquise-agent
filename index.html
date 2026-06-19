@@ -31,6 +31,9 @@
   .logo { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
   .logo span { color: var(--accent); }
   .user-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .api-key-bar { background: var(--warning-light); border-bottom: 0.5px solid #EF9F27; padding: 8px 2rem; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .api-key-bar input { flex: 1; max-width: 420px; padding: 5px 10px; border: 0.5px solid #EF9F27; border-radius: 4px; font-size: 12px; font-family: monospace; }
+  .api-key-bar.saved { background: var(--success-light); border-color: var(--success); }
   .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
 
   /* LOGIN SCREEN */
@@ -123,6 +126,14 @@
   </div>
 </header>
 
+<!-- API KEY BAR -->
+<div id="api-key-bar" class="api-key-bar" style="display:none;">
+  <span style="color:var(--warning);font-weight:500;">🔑 Anthropic API-Key:</span>
+  <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
+  <button class="btn btn-sm" onclick="saveApiKey()">Speichern</button>
+  <span id="api-key-status"></span>
+</div>
+
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-card">
@@ -206,7 +217,7 @@ let items = [];
 let currentItem = null;
 
 const CLIENT_ID = 'e8c54549-b383-4679-9a98-76cf407cecb2';
-const ANTHROPIC_API_KEY = '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';
+function getApiKey() { return localStorage.getItem('anthropic_api_key') || ''; }
 const TENANT_ID = '22a42ae4-5a93-405f-8de7-151c8648bd24';
 const REDIRECT_URI = 'https://thorstenmolinari-creator.github.io/akquise-agent/';
 const SCOPES = 'Sites.Read.All Sites.ReadWrite.All User.Read';
@@ -270,6 +281,13 @@ async function onLoggedIn() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-info').style.display = 'flex';
+  document.getElementById('api-key-bar').style.display = 'flex';
+  const savedKey = localStorage.getItem('anthropic_api_key');
+  if (savedKey) {
+    document.getElementById('api-key-input').value = savedKey;
+    document.getElementById('api-key-bar').classList.add('saved');
+    document.getElementById('api-key-status').textContent = 'Gespeichert ✓';
+  }
   const name = currentUser.name || currentUser.username;
   document.getElementById('user-name').textContent = name;
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
@@ -479,7 +497,7 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': getApiKey(),
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
@@ -559,7 +577,7 @@ Wichtig:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': getApiKey(),
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
@@ -641,6 +659,15 @@ async function runAllPending() {
   document.getElementById('prog-log').textContent = `Alle ${pending.length} Einträge verarbeitet ✓`;
   currentItem = null;
   renderTable();
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { showToast('Bitte API-Key eingeben'); return; }
+  localStorage.setItem('anthropic_api_key', key);
+  document.getElementById('api-key-bar').classList.add('saved');
+  document.getElementById('api-key-status').textContent = 'Gespeichert ✓';
+  showToast('API-Key gespeichert ✓');
 }
 
 function showToast(msg) {
