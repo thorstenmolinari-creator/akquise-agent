@@ -206,6 +206,7 @@ let items = [];
 let currentItem = null;
 
 const CLIENT_ID = 'e8c54549-b383-4679-9a98-76cf407cecb2';
+const ANTHROPIC_API_KEY = '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';
 const TENANT_ID = '22a42ae4-5a93-405f-8de7-151c8648bd24';
 const REDIRECT_URI = 'https://thorstenmolinari-creator.github.io/akquise-agent/';
 const SCOPES = 'Sites.Read.All Sites.ReadWrite.All User.Read';
@@ -476,9 +477,14 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
@@ -551,9 +557,14 @@ Wichtig:
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
