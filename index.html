@@ -393,7 +393,7 @@ function statusLabel(s) {
 }
 
 function openItem(id) {
-  currentItem = items.find(i => i.id === id);
+  currentItem = items.find(i => i.id == id);
   if (!currentItem) return;
   document.getElementById('panel-title').textContent = currentItem.title;
   renderPanel();
