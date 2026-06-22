@@ -366,11 +366,11 @@ async function loadList() {
       id: item.id || i,
       title: item.fields?.Title || item.fields?.Projekt || 'Unbekannt',
       sparte: item.fields?.Sparte || '',
-      link: item.fields?.Link || item.fields?.URL || '',
+      link: (typeof item.fields?.Link === 'object' ? item.fields?.Link?.Url : item.fields?.Link) || item.fields?.URL || '',
       kontakt: item.fields?.Kontaktperson || '',
       email: item.fields?.Email || '',
       tel: item.fields?.Telefon || '',
-      notizen: item.fields?.Notizen || '',
+      notizen: item.fields?.WeitereInfos || item.fields?.['Weitere Infos'] || item.fields?.Notizen || '',
       mailEntwurf: item.fields?.MailEntwurf || '',
       status: item.fields?.Status || 'neu',
       _siteId: siteId, _listId: listId, _itemId: item.id
@@ -401,8 +401,11 @@ function renderTable() {
 }
 
 function sparteLabel(s) {
-  const map = { Kontrollraum: '🖥 Kontrollraum', Corporate: '🏢 Corporate', Bildung: '🎓 Bildung' };
-  return map[s] || s || '–';
+  if (!s) return '–';
+  if (s.toLowerCase().includes('kontrollraum')) return '🖥 Kontrollraum';
+  if (s.toLowerCase().includes('bildung')) return '🎓 Bildung';
+  if (s.toLowerCase().includes('corporate')) return '🏢 ' + s;
+  return s;
 }
 function statusClass(s) {
   return { neu: 'badge-new', recherchiert: 'badge-pending', 'mail-bereit': 'badge-done', fehler: 'badge-error' }[s] || 'badge-new';
@@ -548,7 +551,9 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
 
 async function generateMail() {
   if (!currentItem) return;
-  const vorlage = getVorlage(currentItem.sparte);
+  const sparte = currentItem.sparte?.toLowerCase().includes('kontrollraum') ? 'Kontrollraum' :
+    currentItem.sparte?.toLowerCase().includes('bildung') ? 'Bildung' : 'Corporate';
+  const vorlage = getVorlage(sparte);
   const prompt = `Du bist ein professioneller Akquise-Assistent für Intelliconcept AG, ein führendes AV-Planungsbüro in der Schweiz.
 
 Schreibe eine personalisierte Akquise-E-Mail auf Deutsch (formelles Schweizer Hochdeutsch) basierend auf diesen Informationen:
