@@ -482,10 +482,13 @@ function renderPanel() {
 
 async function recherchieren() {
   if (!currentItem) return;
-  document.getElementById('recherche-progress').style.display = 'block';
+  const progEl = document.getElementById('recherche-progress');
+  if (progEl) progEl.style.display = 'block';
   const setProgress = (pct, msg) => {
-    document.getElementById('r-prog').style.width = pct + '%';
-    document.getElementById('r-log').textContent = msg;
+    const prog = document.getElementById('r-prog');
+    const log = document.getElementById('r-log');
+    if (prog) prog.style.width = pct + '%';
+    if (log) log.textContent = msg;
   };
 
   setProgress(10, 'Analysiere Objekt...');
