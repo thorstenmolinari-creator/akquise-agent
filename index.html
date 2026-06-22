@@ -368,22 +368,26 @@ async function loadList() {
       const linkUrl = typeof linkField === 'object' ? (linkField?.Url || linkField?.url || '') : (linkField || '');
       // Suche Felder mit verschiedenen möglichen Namen
       const f = item.fields || {};
-      const kontakt = f.Kontakt || f.Kontaktperson || f.kontakt || '';
-      const email = f.Email || f.email || f['E-Mail'] || '';
-      const tel = f.Telefon || f.telefon || f.Tel || '';
-      const recherche = f.Recherche || f.recherche || f.Notizen || '';
-      const weitereInfos = f['Weitere Infos'] || f.WeitereInfos || f.weitereInfos || '';
-      const mailEntwurf = f.MailEntwurf || f['Mail Entwurf'] || f.mailentwurf || '';
+      // Echte interne Feldnamen aus Microsoft Lists
+      const kontakt = f.Kontakt || f.Kontaktperson || '';
+      const email = f.Email || f['E-Mail'] || '';
+      const tel = f.Telefon || f.Tel || '';
+      const recherche = f.Recherche || f.Notizen || '';
+      const weitereInfos = f['Weitere Infos'] || f.WeitereInfos || '';
+      const funktion = f.Funktion || f.funktion || '';
+      const mailEntwurf = f.MailEntwurf || f['Mail Entwurf'] || '';
       const status = f.Status || f.status || 'neu';
-      // Choice-Feld kann String oder Objekt sein
-      const sparteRaw = f.Sparte || f.sparte || '';
-      const sparte = typeof sparteRaw === 'object' ? (sparteRaw?.Label || sparteRaw?.label || '') : sparteRaw;
+      // Sparte heisst intern "Bereich"
+      const sparte = f.Bereich || f.Sparte || '';
+      // Link ist ein Objekt {Description, Url}
+      const linkRaw = f.Link || {};
+      const link = typeof linkRaw === 'object' ? (linkRaw.Url || linkRaw.url || linkRaw.Description || '') : linkRaw;
       return {
         id: item.id || i,
-        title: f.Title || f.Titel || f.Projekt || 'Unbekannt',
+        title: f.Title || f.Titel || 'Unbekannt',
         sparte,
         link: linkUrl,
-        kontakt, email, tel, weitereInfos, notizen: recherche, mailEntwurf, status,
+        link, kontakt, email, tel, weitereInfos, funktion, notizen: recherche, mailEntwurf, status,
         _siteId: siteId, _listId: listId, _itemId: item.id,
         _rawFields: f
       };
@@ -460,6 +464,7 @@ function renderPanel() {
       <span class="k">Kontakt</span><span class="v" id="r-kontakt">${item.kontakt || '–'}</span>
       <span class="k">E-Mail</span><span class="v" id="r-email">${item.email || '–'}</span>
       <span class="k">Telefon</span><span class="v" id="r-tel">${item.tel || '–'}</span>
+      <span class="k">Funktion</span><span class="v" id="r-funktion">${item.funktion || '–'}</span>
       <span class="k">Recherche</span><span class="v" id="r-notizen" style="white-space:pre-wrap;">${item.notizen || '–'}</span>
     </div>
 
@@ -471,6 +476,7 @@ function renderPanel() {
     <div class="action-row">
       <button class="btn btn-primary" onclick="recherchieren()">🔍 Recherchieren</button>
       ${item.status === 'recherchiert' || item.status === 'mail-bereit' ? `<button class="btn" onclick="generateMail()">✉️ Mail generieren</button>` : ''}
+      <button class="btn" onclick="markiereGesendet()" style="background:var(--success);color:white;border-color:var(--success);">✅ Gesendet</button>
     </div>
 
     ${item.mailEntwurf ? `
@@ -512,6 +518,7 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
   "email": "E-Mail-Adresse wenn auffindbar, sonst leer",
   "tel": "Telefonnummer wenn auffindbar, sonst leer",
   "notizen": "2-3 Sätze: Was macht das Unternehmen/die Institution, welche AV-Anforderungen könnten bestehen, warum ist Intelliconcept relevant",
+  "funktion": "Funktion/Titel der Kontaktperson z.B. Leiter Informatik, Facility Manager, CEO",
   "anrede": "Herr oder Frau basierend auf dem Kontakt"
 }`;
 
@@ -554,11 +561,14 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
       currentItem.email = json.email || currentItem.email;
       currentItem.tel = json.tel || currentItem.tel;
       currentItem.notizen = json.notizen || currentItem.notizen;
+      currentItem.funktion = json.funktion || currentItem.funktion;
       currentItem._anrede = json.anrede || 'Herr/Frau';
       currentItem.status = 'recherchiert';
       document.getElementById('r-kontakt').textContent = currentItem.kontakt || '–';
       document.getElementById('r-email').textContent = currentItem.email || '–';
       document.getElementById('r-tel').textContent = currentItem.tel || '–';
+      const funkEl = document.getElementById('r-funktion');
+      if (funkEl) funkEl.textContent = currentItem.funktion || '–';
       document.getElementById('r-notizen').textContent = currentItem.notizen || '–';
       renderTable();
       await saveToList(currentItem);
@@ -677,11 +687,12 @@ async function saveToList(item) {
         if (key) { data[key] = value; return; }
       }
     };
-    set(['Kontakt', 'Kontaktperson'], item.kontakt);
-    set(['Email', 'E-Mail'], item.email);
+    set(['Kontakt'], item.kontakt);
+    set(['Email'], item.email);
     set(['Telefon'], item.tel);
     set(['Recherche'], item.notizen);
-    set(['MailEntwurf', 'Mail Entwurf', 'Mailentwurf'], item.mailEntwurf);
+    set(['Funktion'], item.funktion);
+    set(['MailEntwurf'], item.mailEntwurf);
     set(['Status'], item.status);
     console.log('Feldnamen aus Liste:', fields);
     console.log('Speichere:', data);
