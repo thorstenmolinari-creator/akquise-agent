@@ -342,7 +342,7 @@ function parseItem(item, siteId, listId) {
     email:        f.Email || '',
     telefon:      f.Telefon || '',
     recherche:    f.Recherche || '',
-    bildLink:     f['Bild Link'] || f.BildLink || '',
+    bildLink:     f['Bild_x0020_Link'] || f['Bild Link'] || f.BildLink || '',
     mailEntwurf:  f.MailEntwurf || '',
     status:       f.Status || 'Neu',
     _siteId: siteId, _listId: listId, _itemId: item.id
@@ -358,7 +358,7 @@ async function saveItem(item) {
     Email:        item.email,
     Telefon:      item.telefon,
     Recherche:    item.recherche,
-    BildLink:     item.bildLink,
+    'Bild_x0020_Link': item.bildLink,
     MailEntwurf:  item.mailEntwurf,
     Status:       item.status
   };
@@ -407,7 +407,7 @@ function bereichTag(b) {
   return `<span class="sparte-tag">${icon} ${esc(b)}</span>`;
 }
 function statusBadge(s) {
-  const map = { 'Neu':'badge-neu','Recherchiert':'badge-recherchiert','Mail bereit':'badge-mail','Gesendet':'badge-gesendet','Fehler':'badge-fehler' };
+  const map = { 'neu':'badge-neu','recherchiert':'badge-recherchiert','mail bereit':'badge-mail','gesendet':'badge-gesendet','fehler':'badge-fehler' };
   const cls = map[s] || 'badge-neu';
   return `<span class="badge ${cls}">${esc(s)}</span>`;
 }
@@ -472,7 +472,7 @@ function renderPanel() {
 
   document.getElementById('panel-actions').innerHTML = `
     <button class="btn btn-primary" onclick="recherchieren()">🔍 Recherchieren</button>
-    ${item.status === 'Recherchiert' || item.status === 'Mail bereit' ? `<button class="btn" onclick="generateMail()" style="background:var(--purple);color:white;border-color:var(--purple);">✉️ Mail generieren</button>` : ''}
+    ${item.status === 'recherchiert' || item.status === 'mail bereit' ? `<button class="btn" onclick="generateMail()" style="background:var(--purple);color:white;border-color:var(--purple);">✉️ Mail generieren</button>` : ''}
     ${item.mailEntwurf ? `
       <button class="btn" onclick="mailOeffnen()">📧 In Outlook öffnen</button>
       <button class="btn" onclick="mailKopieren()">📋 Kopieren</button>
@@ -539,8 +539,8 @@ Antworte NUR mit diesem JSON (kein Text davor/danach):
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       })
@@ -565,7 +565,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach):
       currentItem.recherche = json.recherche || currentItem.recherche;
       currentItem.bildLink  = json.bildLink  || currentItem.bildLink;
       currentItem._anrede   = json.anrede    || 'Herr/Frau';
-      currentItem.status    = 'Recherchiert';
+      currentItem.status    = 'recherchiert';
       await saveItem(currentItem);
       renderTable();
       renderStats();
@@ -574,7 +574,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach):
     setTimeout(() => { if (prog) prog.style.display = 'none'; renderPanel(); }, 800);
   } catch(e) {
     setP(0, 'Fehler: ' + e.message);
-    currentItem.status = 'Fehler';
+    currentItem.status = 'fehler';
     toast('Recherche fehlgeschlagen: ' + e.message);
   }
 }
@@ -636,15 +636,15 @@ ANFORDERUNGEN AN DIE MAIL:
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }]
       })
     });
     const data = await res.json();
     const text = data.content?.find(b => b.type === 'text')?.text || '';
     currentItem.mailEntwurf = text;
-    currentItem.status = 'Mail bereit';
+    currentItem.status = 'mail bereit';
     await saveItem(currentItem);
     renderTable();
     renderStats();
@@ -668,7 +668,7 @@ async function markiereGesendet() {
   if (!currentItem) return;
   const entwurf = document.getElementById('mail-entwurf');
   if (entwurf) currentItem.mailEntwurf = entwurf.value;
-  currentItem.status = 'Gesendet';
+  currentItem.status = 'gesendet';
   await saveItem(currentItem);
   renderTable();
   renderStats();
@@ -678,7 +678,7 @@ async function markiereGesendet() {
 
 // ─── ALLE VERARBEITEN ─────────────────────────────────────────────────────────
 async function verarbeiteAlle() {
-  const pending = items.filter(i => i.status === 'Neu');
+  const pending = items.filter(i => i.status === 'neu');
   if (!pending.length) { toast('Keine neuen Einträge'); return; }
   const ov = document.getElementById('progress-overlay');
   ov.style.display = 'block';
