@@ -293,8 +293,8 @@ async function loadList() {
   const url = document.getElementById('list-url').value.trim();
   const name = document.getElementById('list-name').value.trim() || 'Akquise Claude';
   if (!url) { toast('Bitte List-URL eingeben'); return; }
-  sessionStorage.setItem('list_url', url);
-  sessionStorage.setItem('list_name', name);
+  localStorage.setItem('list_url', url);
+  localStorage.setItem('list_name', name);
   toast('Lade Liste...');
   try {
     const parsed = new URL(url);
@@ -735,13 +735,11 @@ async function onLoggedIn() {
     document.getElementById('api-status').textContent = 'Gespeichert ✓';
   }
   await loadUser();
-  const savedUrl = sessionStorage.getItem('list_url');
-  const savedName = sessionStorage.getItem('list_name');
-  if (savedUrl) {
-    document.getElementById('list-url').value = savedUrl;
-    document.getElementById('list-name').value = savedName || 'Akquise Claude';
-    await loadList();
-  }
+  const savedUrl = localStorage.getItem('list_url') || 'https://intelliconceptag-my.sharepoint.com/personal/thorsten_molinari_intelliconcept_ch';
+  const savedName = localStorage.getItem('list_name') || 'Akquise Claude';
+  document.getElementById('list-url').value = savedUrl;
+  document.getElementById('list-name').value = savedName;
+  await loadList();
 }
 
 window.addEventListener('load', async () => {
