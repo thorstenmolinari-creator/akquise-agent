@@ -619,23 +619,54 @@ function getVorlage(sparte) {
   return vorlagen[sparte] || vorlagen.Corporate;
 }
 
+let _fieldNames = null;
+
+async function getFieldNames(siteId, listId) {
+  if (_fieldNames) return _fieldNames;
+  try {
+    const token = await getToken();
+    const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/fields`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    _fieldNames = {};
+    data.value?.forEach(f => {
+      const display = f.displayName?.toLowerCase().replace(/ /g, '');
+      _fieldNames[display] = f.name;
+    });
+    console.log('Feldnamen:', _fieldNames);
+    return _fieldNames;
+  } catch(e) { console.warn('Feldnamen nicht geladen:', e); return {}; }
+}
+
 async function saveToList(item) {
   if (!item._siteId || !item._listId || !item._itemId) return;
   try {
     const token = await getToken();
-    await fetch(`https://graph.microsoft.com/v1.0/sites/${item._siteId}/lists/${item._listId}/items/${item._itemId}/fields`, {
+    const fields = await getFieldNames(item._siteId, item._listId);
+    const data = {};
+    const set = (display, value) => {
+      if (!value) return;
+      const key = fields[display] || fields[display.replace(/ /g, '')] || display;
+      data[key] = value;
+    };
+    set('kontaktperson', item.kontakt);
+    set('kontakt', item.kontakt);
+    set('email', item.email);
+    set('telefon', item.tel);
+    set('recherche', item.notizen);
+    set('mailentwurf', item.mailEntwurf);
+    set('status', item.status);
+    console.log('Speichere:', data);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${item._siteId}/lists/${item._listId}/items/${item._itemId}/fields`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        Kontaktperson: item.kontakt,
-        Email: item.email,
-        Telefon: item.tel,
-        Recherche: item.notizen,
-        MailEntwurf: item.mailEntwurf,
-        Status: item.status
-      })
+      body: JSON.stringify(data)
     });
-  } catch (e) { console.warn('Konnte nicht in Liste speichern:', e); }
+    const result = await res.json();
+    if (result.error) showToast('Fehler: ' + result.error.message);
+    else showToast('In Liste gespeichert ✓');
+  } catch (e) { console.warn('Konnte nicht speichern:', e); }
 }
 
 function mailOeffnen() {
