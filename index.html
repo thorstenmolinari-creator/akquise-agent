@@ -645,18 +645,22 @@ async function saveToList(item) {
     const token = await getToken();
     const fields = await getFieldNames(item._siteId, item._listId);
     const data = {};
-    const set = (display, value) => {
+    // Verwende exakte interne Feldnamen aus der Liste
+    const set = (displayNames, value) => {
       if (!value) return;
-      const key = fields[display] || fields[display.replace(/ /g, '')] || display;
-      data[key] = value;
+      for (const display of displayNames) {
+        const key = fields[display.toLowerCase().replace(/ /g, '')];
+        if (key) { data[key] = value; return; }
+      }
     };
-    set('kontaktperson', item.kontakt);
-    set('kontakt', item.kontakt);
-    set('email', item.email);
-    set('telefon', item.tel);
-    set('recherche', item.notizen);
-    set('mailentwurf', item.mailEntwurf);
-    set('status', item.status);
+    set(['Kontakt', 'Kontaktperson'], item.kontakt);
+    set(['Email', 'E-Mail'], item.email);
+    set(['Telefon'], item.tel);
+    set(['Recherche'], item.notizen);
+    set(['MailEntwurf', 'Mail Entwurf', 'Mailentwurf'], item.mailEntwurf);
+    set(['Status'], item.status);
+    console.log('Feldnamen aus Liste:', fields);
+    console.log('Speichere:', data);
     console.log('Speichere:', data);
     const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${item._siteId}/lists/${item._listId}/items/${item._itemId}/fields`, {
       method: 'PATCH',
