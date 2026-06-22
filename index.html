@@ -362,20 +362,28 @@ async function loadList() {
       headers: { Authorization: 'Bearer ' + token }
     });
     const itemsData = await itemsRes.json();
-    items = itemsData.value.map((item, i) => ({
-      id: item.id || i,
-      title: item.fields?.Title || item.fields?.Projekt || 'Unbekannt',
-      sparte: item.fields?.Sparte || '',
-      link: (typeof item.fields?.Link === 'object' ? item.fields?.Link?.Url : item.fields?.Link) || item.fields?.URL || '',
-      kontakt: item.fields?.Kontaktperson || '',
-      email: item.fields?.Email || '',
-      tel: item.fields?.Telefon || '',
-      weitereInfos: item.fields?.WeitereInfos || item.fields?.['Weitere Infos'] || '',
-      notizen: item.fields?.Recherche || '',
-      mailEntwurf: item.fields?.MailEntwurf || '',
-      status: item.fields?.Status || 'neu',
-      _siteId: siteId, _listId: listId, _itemId: item.id
-    }));
+    items = itemsData.value.map((item, i) => {
+      const linkField = item.fields?.Link;
+      const linkUrl = typeof linkField === 'object' ? (linkField?.Url || linkField?.url || '') : (linkField || '');
+      // Suche Felder mit verschiedenen möglichen Namen
+      const f = item.fields || {};
+      const kontakt = f.Kontakt || f.Kontaktperson || f.kontakt || '';
+      const email = f.Email || f.email || f['E-Mail'] || '';
+      const tel = f.Telefon || f.telefon || f.Tel || '';
+      const recherche = f.Recherche || f.recherche || f.Notizen || '';
+      const weitereInfos = f['Weitere Infos'] || f.WeitereInfos || f.weitereInfos || '';
+      const mailEntwurf = f.MailEntwurf || f['Mail Entwurf'] || f.mailentwurf || '';
+      const status = f.Status || f.status || 'neu';
+      return {
+        id: item.id || i,
+        title: f.Title || f.Titel || f.Projekt || 'Unbekannt',
+        sparte: f.Sparte || f.sparte || '',
+        link: linkUrl,
+        kontakt, email, tel, weitereInfos, notizen: recherche, mailEntwurf, status,
+        _siteId: siteId, _listId: listId, _itemId: item.id,
+        _rawFields: f
+      };
+    });
     sessionStorage.setItem('list_url', document.getElementById('list-url').value.trim());
     sessionStorage.setItem('list_name', document.getElementById('list-name').value);
     renderTable();
@@ -622,19 +630,25 @@ function getVorlage(sparte) {
 let _fieldNames = null;
 
 async function getFieldNames(siteId, listId) {
-  if (_fieldNames) return _fieldNames;
+  if (_fieldNames && Object.keys(_fieldNames).length > 0) return _fieldNames;
   try {
     const token = await getToken();
-    const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/fields`, {
+    // Extrahiere nur die Site-ID (erster Teil vor dem Komma)
+    const cleanSiteId = siteId.split(',')[0];
+    const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/columns`;
+    console.log('Lade Felder von:', url);
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
+    console.log('Felder Response:', data);
     _fieldNames = {};
-    data.value?.forEach(f => {
-      const display = f.displayName?.toLowerCase().replace(/ /g, '');
+    const items = data.value || [];
+    items.forEach(f => {
+      const display = (f.displayName || '').toLowerCase().replace(/ /g, '');
       _fieldNames[display] = f.name;
+      console.log(`  Feld: "${f.displayName}" -> "${f.name}"`);
     });
-    console.log('Feldnamen:', _fieldNames);
     return _fieldNames;
   } catch(e) { console.warn('Feldnamen nicht geladen:', e); return {}; }
 }
