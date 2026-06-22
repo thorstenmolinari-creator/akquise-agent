@@ -77,6 +77,7 @@
   .badge-done { background: var(--success-light); color: var(--success); }
   .badge-pending { background: var(--warning-light); color: var(--warning); }
   .badge-error { background: var(--danger-light); color: var(--danger); }
+  .badge-sent { background: #E8F5E9; color: #2E7D32; }
 
   /* DETAIL PANEL */
   #detail-panel { display: none; position: fixed; top: 56px; right: 0; width: 500px; height: calc(100vh - 56px); background: var(--surface); border-left: 0.5px solid var(--border); overflow-y: auto; z-index: 50; padding: 1.5rem; }
@@ -374,10 +375,13 @@ async function loadList() {
       const weitereInfos = f['Weitere Infos'] || f.WeitereInfos || f.weitereInfos || '';
       const mailEntwurf = f.MailEntwurf || f['Mail Entwurf'] || f.mailentwurf || '';
       const status = f.Status || f.status || 'neu';
+      // Choice-Feld kann String oder Objekt sein
+      const sparteRaw = f.Sparte || f.sparte || '';
+      const sparte = typeof sparteRaw === 'object' ? (sparteRaw?.Label || sparteRaw?.label || '') : sparteRaw;
       return {
         id: item.id || i,
         title: f.Title || f.Titel || f.Projekt || 'Unbekannt',
-        sparte: f.Sparte || f.sparte || '',
+        sparte,
         link: linkUrl,
         kontakt, email, tel, weitereInfos, notizen: recherche, mailEntwurf, status,
         _siteId: siteId, _listId: listId, _itemId: item.id,
@@ -411,16 +415,17 @@ function renderTable() {
 
 function sparteLabel(s) {
   if (!s) return '–';
-  if (s.toLowerCase().includes('kontrollraum')) return '🖥 Kontrollraum';
-  if (s.toLowerCase().includes('bildung')) return '🎓 Bildung';
-  if (s.toLowerCase().includes('corporate')) return '🏢 ' + s;
+  const sl = s.toLowerCase();
+  if (sl.includes('kontrollraum')) return '🖥 Kontrollraum';
+  if (sl.includes('bildung')) return '🎓 Bildung';
+  if (sl.includes('corporate')) return '🏢 ' + s;
   return s;
 }
 function statusClass(s) {
-  return { neu: 'badge-new', recherchiert: 'badge-pending', 'mail-bereit': 'badge-done', fehler: 'badge-error' }[s] || 'badge-new';
+  return { neu: 'badge-new', recherchiert: 'badge-pending', 'mail-bereit': 'badge-done', fehler: 'badge-error', gesendet: 'badge-sent' }[s] || 'badge-new';
 }
 function statusLabel(s) {
-  return { neu: 'Neu', recherchiert: 'Recherchiert', 'mail-bereit': 'Mail bereit', fehler: 'Fehler' }[s] || s;
+  return { neu: 'Neu', recherchiert: 'Recherchiert', 'mail-bereit': 'Mail bereit', fehler: 'Fehler', gesendet: '✉️ Gesendet' }[s] || s;
 }
 
 function openItem(id) {
@@ -475,6 +480,7 @@ function renderPanel() {
       <div class="action-row">
         <button class="btn btn-primary" onclick="mailOeffnen()">📧 In Outlook öffnen</button>
         <button class="btn" onclick="mailKopieren()">📋 Kopieren</button>
+        <button class="btn" onclick="markiereGesendet()" style="background:var(--success);color:white;border-color:var(--success);">✅ Als gesendet markieren</button>
       </div>
     ` : ''}
   `;
@@ -567,8 +573,9 @@ Bitte recherchiere und liefere folgende Informationen im JSON-Format (NUR JSON, 
 
 async function generateMail() {
   if (!currentItem) return;
-  const sparte = currentItem.sparte?.toLowerCase().includes('kontrollraum') ? 'Kontrollraum' :
-    currentItem.sparte?.toLowerCase().includes('bildung') ? 'Bildung' : 'Corporate';
+  const sparteStr = currentItem.sparte || '';
+  const sparte = sparteStr.toLowerCase().includes('kontrollraum') ? 'Kontrollraum' :
+    sparteStr.toLowerCase().includes('bildung') ? 'Bildung' : 'Corporate';
   const vorlage = getVorlage(sparte);
   const prompt = `Du bist ein professioneller Akquise-Assistent für Intelliconcept AG, ein führendes AV-Planungsbüro in der Schweiz.
 
@@ -721,6 +728,16 @@ async function runAllPending() {
   document.getElementById('prog-log').textContent = `Alle ${pending.length} Einträge verarbeitet ✓`;
   currentItem = null;
   renderTable();
+}
+
+async function markiereGesendet() {
+  if (!currentItem) return;
+  currentItem.status = 'gesendet';
+  currentItem.mailEntwurf = document.getElementById('mail-entwurf')?.value || currentItem.mailEntwurf;
+  await saveToList(currentItem);
+  renderTable();
+  renderPanel();
+  showToast('✅ Als gesendet markiert!');
 }
 
 function saveApiKey() {
