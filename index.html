@@ -370,7 +370,8 @@ async function loadList() {
       kontakt: item.fields?.Kontaktperson || '',
       email: item.fields?.Email || '',
       tel: item.fields?.Telefon || '',
-      notizen: item.fields?.WeitereInfos || item.fields?.['Weitere Infos'] || item.fields?.Notizen || '',
+      weitereInfos: item.fields?.WeitereInfos || item.fields?.['Weitere Infos'] || '',
+      notizen: item.fields?.Recherche || '',
       mailEntwurf: item.fields?.MailEntwurf || '',
       status: item.fields?.Status || 'neu',
       _siteId: siteId, _listId: listId, _itemId: item.id
@@ -437,12 +438,16 @@ function renderPanel() {
       <span class="k">Status</span><span class="v"><span class="badge ${statusClass(item.status)}">${statusLabel(item.status)}</span></span>
     </div>
 
+    ${item.weitereInfos ? `
+    <div class="section-label">Weitere Infos (deine Notizen)</div>
+    <div style="font-size:13px;color:var(--muted);white-space:pre-wrap;margin-bottom:8px;">${item.weitereInfos}</div>` : ''}
+
     <div class="section-label">Recherche-Ergebnisse</div>
     <div class="info-grid">
       <span class="k">Kontakt</span><span class="v" id="r-kontakt">${item.kontakt || '–'}</span>
       <span class="k">E-Mail</span><span class="v" id="r-email">${item.email || '–'}</span>
       <span class="k">Telefon</span><span class="v" id="r-tel">${item.tel || '–'}</span>
-      <span class="k">Notizen</span><span class="v" id="r-notizen" style="white-space:pre-wrap;">${item.notizen || '–'}</span>
+      <span class="k">Recherche</span><span class="v" id="r-notizen" style="white-space:pre-wrap;">${item.notizen || '–'}</span>
     </div>
 
     <div id="recherche-progress" style="display:none;">
@@ -625,7 +630,7 @@ async function saveToList(item) {
         Kontaktperson: item.kontakt,
         Email: item.email,
         Telefon: item.tel,
-        Notizen: item.notizen,
+        Recherche: item.notizen,
         MailEntwurf: item.mailEntwurf,
         Status: item.status
       })
