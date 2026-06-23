@@ -412,7 +412,7 @@ function renderTable() {
       '<td style="font-size:12px;">' + (esc(item.kontakt) || '<span style="color:var(--muted)">–</span>') + '</td>' +
       '<td style="font-size:12px;">' + (item.email ? '<a href="mailto:' + esc(item.email) + '" style="color:var(--accent)">' + esc(item.email) + '</a>' : '<span style="color:var(--muted)">–</span>') + '</td>' +
       '<td>' + statusBadge(item.status) + '</td>' +
-      '<td><button class="btn btn-sm" onclick="openItem('' + item.id + '')">Öffnen →</button></td>' +
+      '<td><button class="btn btn-sm" onclick="openItem(\'' + item.id + '\')">Öffnen →</button></td>' +
       '</tr>';
   }).join('');
 }
