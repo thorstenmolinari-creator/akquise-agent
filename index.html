@@ -730,7 +730,7 @@ async function teamsSync() {
       
       // Extrahiere Text (HTML bereinigen)
       const rawText = msg.body?.content || '';
-      const text = rawText.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      const text = rawText.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/ +/g, ' ').trim();
       if (!text) continue;
 
       // Parse Struktur
@@ -766,15 +766,15 @@ function parseTeamsMessage(text) {
   
   for (const line of lines) {
     if (line.toLowerCase().startsWith('projekttitel:')) {
-      result.titel = line.replace(/^projekttitel:\s*/i, '').trim();
+      result.titel = line.replace(/^projekttitel:/i, '').trim();
     } else if (line.toLowerCase().startsWith('sparte:')) {
-      result.sparte = line.replace(/^sparte:\s*/i, '').trim();
+      result.sparte = line.replace(/^sparte:/i, '').trim();
     } else if (line.toLowerCase().startsWith('link2:')) {
-      result.link2 = line.replace(/^link2:\s*/i, '').trim();
+      result.link2 = line.replace(/^link2:/i, '').trim();
     } else if (line.toLowerCase().startsWith('link:')) {
-      result.link = line.replace(/^link:\s*/i, '').trim();
+      result.link = line.replace(/^link:/i, '').trim();
     } else if (line.toLowerCase().startsWith('info:')) {
-      result.info = line.replace(/^info:\s*/i, '').trim();
+      result.info = line.replace(/^info:/i, '').trim();
     }
   }
   
