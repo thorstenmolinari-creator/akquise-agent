@@ -184,8 +184,7 @@ textarea.mail-body:focus { outline: none; }
     </div>
     <div class="toolbar-right">
       <button class="btn" onclick="loadList()">↻ Aktualisieren</button>
-      <button class="btn" onclick="teamsSync()" style="background:#5B5EA6;color:white;border-color:#5B5EA6;">⬇ Teams sync</button>
-      <button class="btn btn-primary" onclick="verarbeiteAlle()">▶ Alle verarbeiten</button>
+<button class="btn btn-primary" onclick="verarbeiteAlle()">▶ Alle verarbeiten</button>
     </div>
   </div>
 
@@ -699,115 +698,6 @@ async function verarbeiteAlle() {
   document.getElementById('po-log').textContent = `Alle ${pending.length} Einträge verarbeitet ✓`;
   currentItem = null;
   setTimeout(() => { ov.style.display = 'none'; }, 3000);
-}
-
-// ─── TEAMS SYNC ──────────────────────────────────────────────────────────────
-const TEAMS_TEAM_ID = ''; // wird automatisch gefunden
-const TEAMS_CHANNEL_NAME = 'Akquise';
-
-async function teamsSync() {
-  toast('Lese Teams-Kanal...');
-  try {
-    // Finde Team "Intelliconcept - Intern"
-    const teamsRes = await gf('/me/joinedTeams');
-    const team = teamsRes.value?.find(t => t.displayName?.includes('Intelliconcept') && t.displayName?.includes('Intern'));
-    if (!team) { toast('Team nicht gefunden'); return; }
-
-    // Finde Kanal "Akquise"
-    const channelsRes = await gf(`/teams/${team.id}/channels`);
-    const channel = channelsRes.value?.find(c => c.displayName === TEAMS_CHANNEL_NAME);
-    if (!channel) { toast('Kanal "Akquise" nicht gefunden'); return; }
-
-    // Lade letzte 20 Nachrichten
-    const msgsRes = await gf(`/teams/${team.id}/channels/${channel.id}/messages?$top=20`);
-    const messages = msgsRes.value || [];
-    
-    let neu = 0;
-    for (const msg of messages) {
-      // Überspringe System-Nachrichten und Antworten
-      if (msg.messageType !== 'message') continue;
-      if (msg.replyToId) continue;
-      
-      // Extrahiere Text (HTML bereinigen)
-      const rawText = msg.body?.content || '';
-      const text = rawText.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/ +/g, ' ').trim();
-      if (!text) continue;
-
-      // Parse Struktur
-      const parsed = parseTeamsMessage(text);
-      if (!parsed.titel) continue;
-
-      // Prüfe ob bereits in Liste
-      const exists = items.find(i => i.title === parsed.titel);
-      if (exists) continue;
-
-      // Erstelle neuen Eintrag in Microsoft List
-      await createListItem(parsed);
-      neu++;
-    }
-
-    if (neu > 0) {
-      toast(`${neu} neue Einträge aus Teams hinzugefügt ✓`);
-      await loadList();
-    } else {
-      toast('Keine neuen Einträge gefunden');
-    }
-  } catch(e) {
-    toast('Teams Sync Fehler: ' + e.message);
-    console.error(e);
-  }
-}
-
-function parseTeamsMessage(text) {
-  const result = { titel: '', sparte: '', link: '', link2: '', info: '' };
-  
-  const lines = text.split(' ').map(l => l.trim()).filter(Boolean);
-  
-  for (const line of lines) {
-    if (line.toLowerCase().startsWith('projekttitel:')) {
-      result.titel = line.replace(/^projekttitel:/i, '').trim();
-    } else if (line.toLowerCase().startsWith('sparte:')) {
-      result.sparte = line.replace(/^sparte:/i, '').trim();
-    } else if (line.toLowerCase().startsWith('link2:')) {
-      result.link2 = line.replace(/^link2:/i, '').trim();
-    } else if (line.toLowerCase().startsWith('link:')) {
-      result.link = line.replace(/^link:/i, '').trim();
-    } else if (line.toLowerCase().startsWith('info:')) {
-      result.info = line.replace(/^info:/i, '').trim();
-    }
-  }
-  
-  // Falls kein Projekttitel gefunden, nimm erste Zeile
-  if (!result.titel && lines.length > 0) {
-    result.titel = lines[0].slice(0, 100);
-  }
-  
-  return result;
-}
-
-async function createListItem(parsed) {
-  if (!items.length) return;
-  const sample = items[0];
-  if (!sample._siteId || !sample._listId) return;
-  
-  const weitereInfos = [parsed.info, parsed.link2].filter(Boolean).join(' | ');
-  
-  const body = {
-    fields: {
-      Title: parsed.titel,
-      Bereich: parsed.sparte,
-      Link: parsed.link ? { Url: parsed.link, Description: parsed.titel } : null,
-      'Weitere Infos': weitereInfos,
-      Status: 'Neu'
-    }
-  };
-  
-  // Entferne null Felder
-  Object.keys(body.fields).forEach(k => { if (!body.fields[k]) delete body.fields[k]; });
-  
-  try {
-    await gf(`/sites/${sample._siteId}/lists/${sample._listId}/items`, 'POST', body);
-  } catch(e) { console.warn('createListItem Fehler:', e); }
 }
 
 // ─── API KEY ──────────────────────────────────────────────────────────────────
