@@ -790,8 +790,7 @@ async function createListItem(parsed) {
   const sample = items[0];
   if (!sample._siteId || !sample._listId) return;
   
-  const weitereInfos = [parsed.info, parsed.link2].filter(Boolean).join('
-');
+  const weitereInfos = [parsed.info, parsed.link2].filter(Boolean).join(' | ');
   
   const body = {
     fields: {
