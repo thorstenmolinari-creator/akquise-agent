@@ -732,7 +732,7 @@ async function markiereGesendet() {
 
 // ─── ALLE VERARBEITEN ─────────────────────────────────────────────────────────
 async function verarbeiteAlle() {
-  const pending = items.filter(i => i.status === 'neu');
+  const pending = items.filter(i => i.status === 'Neu');
   if (!pending.length) { toast('Keine neuen Einträge'); return; }
   const ov = document.getElementById('progress-overlay');
   ov.style.display = 'block';
