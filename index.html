@@ -761,8 +761,7 @@ async function teamsSync() {
 function parseTeamsMessage(text) {
   const result = { titel: '', sparte: '', link: '', link2: '', info: '' };
   
-  const lines = text.split('
-').map(l => l.trim()).filter(Boolean);
+  const lines = text.split(' ').map(l => l.trim()).filter(Boolean);
   
   for (const line of lines) {
     if (line.toLowerCase().startsWith('projekttitel:')) {
