@@ -89,11 +89,12 @@ tr:hover td { background: var(--surface-2); }
 
 /* BADGES */
 .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
-.badge-neu { background: var(--accent-light); color: var(--accent); }
-.badge-recherchiert { background: var(--amber-light); color: var(--amber); }
-.badge-mail { background: var(--purple-light); color: var(--purple); }
-.badge-gesendet { background: var(--green-light); color: var(--green); }
+.badge-neu { background: #1A5FA8; color: white; }
+.badge-recherchiert { background: #E87722; color: white; }
+.badge-mail { background: #F5C800; color: #333; }
+.badge-gesendet { background: #1A7A50; color: white; }
 .badge-fehler { background: var(--red-light); color: var(--red); }
+.badge-verloren { background: #555; color: white; }
 
 /* SPARTE TAGS */
 .sparte-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
@@ -188,6 +189,12 @@ textarea.mail-body:focus { outline: none; }
     </div>
   </div>
 
+  <!-- TABS -->
+  <div id="tabs" style="display:none;padding:0 24px 0;display:flex;gap:8px;margin-bottom:0;">
+    <button id="tab-aktiv" class="btn btn-primary" onclick="switchTab('aktiv')" style="border-radius:6px 6px 0 0;">Aktiv</button>
+    <button id="tab-verloren" class="btn" onclick="switchTab('verloren')" style="border-radius:6px 6px 0 0;">Verloren</button>
+  </div>
+
   <div class="stats-bar" id="stats-bar" style="display:none">
     <div class="stat"><div class="stat-n" id="stat-total">0</div><span>Total</span></div>
     <div class="stat"><div class="stat-n" id="stat-neu">0</div><span style="color:var(--accent)">Neu</span></div>
@@ -200,9 +207,9 @@ textarea.mail-body:focus { outline: none; }
       <thead>
         <tr>
           <th>Objekt / Projekt</th>
+          <th>Link</th>
           <th>Bereich</th>
           <th>Kontakt</th>
-          <th>Funktion</th>
           <th>E-Mail</th>
           <th>Status</th>
           <th></th>
@@ -241,7 +248,15 @@ const SCOPES      = 'Sites.Read.All Sites.ReadWrite.All User.Read';
 const GRAPH       = 'https://graph.microsoft.com/v1.0';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let msToken = null, currentUser = null, items = [], currentItem = null;
+let msToken = null, currentUser = null, items = [], currentItem = null, currentTab = 'aktiv';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-aktiv').className = tab === 'aktiv' ? 'btn btn-primary' : 'btn';
+  document.getElementById('tab-verloren').className = tab === 'verloren' ? 'btn btn-primary' : 'btn';
+  renderTable();
+  renderStats();
+}
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 function login() {
@@ -345,6 +360,7 @@ function parseItem(item, siteId, listId) {
     bildLink:     f['Bild_x0020_Link'] || f['Bild Link'] || f.BildLink || '',
     mailEntwurf:  f.MailEntwurf || '',
     status:       f.Status || 'Neu',
+    bemerkungen:  f.Bemerkungen || '',
     _siteId: siteId, _listId: listId, _itemId: item.id
   };
 }
@@ -360,7 +376,8 @@ async function saveItem(item) {
     Recherche:    item.recherche,
     'Bild_x0020_Link': item.bildLink,
     MailEntwurf:  item.mailEntwurf,
-    Status:       item.status
+    Status:       item.status,
+    Bemerkungen:  item.bemerkungen
   };
   // Entferne leere Felder
   Object.keys(body).forEach(k => { if (!body[k]) delete body[k]; });
@@ -377,26 +394,36 @@ function renderTable() {
     tbody.innerHTML = '<tr><td colspan="7" class="empty">Keine Einträge gefunden.</td></tr>';
     return;
   }
-  tbody.innerHTML = items.map(item => `
-    <tr>
-      <td>
-        <div class="project-name">${esc(item.title)}</div>
-        ${item.link ? `<a href="${esc(item.link)}" target="_blank" class="project-link">🔗 Link</a>` : ''}
-      </td>
-      <td>${bereichTag(item.bereich)}</td>
-      <td style="font-size:12px;">${esc(item.kontakt) || '<span style="color:var(--muted)">–</span>'}</td>
-      <td style="font-size:12px;color:var(--muted);">${esc(item.funktion) || '–'}</td>
-      <td style="font-size:12px;">${item.email ? `<a href="mailto:${esc(item.email)}" style="color:var(--accent)">${esc(item.email)}</a>` : '<span style="color:var(--muted)">–</span>'}</td>
-      <td>${statusBadge(item.status)}</td>
-      <td><button class="btn btn-sm" onclick="openItem('${item.id}')">Öffnen →</button></td>
-    </tr>`).join('');
+  const visibleItems = currentTab === 'verloren'
+    ? items.filter(i => i.status === 'Verloren')
+    : items.filter(i => i.status !== 'Verloren');
+  if (!visibleItems.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">' + (currentTab === 'verloren' ? 'Keine verlorenen Einträge.' : 'Keine aktiven Einträge.') + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = visibleItems.map(item => {
+    const shortLink = item.link ? item.link.replace(/^https?:\/\//, '').slice(0, 30) + (item.link.length > 33 ? '…' : '') : '';
+    return '<tr>' +
+      '<td><div class="project-name">' + esc(item.title) + '</div>' +
+      (item.bemerkungen ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;">💬 ' + esc(item.bemerkungen.slice(0,40)) + (item.bemerkungen.length > 40 ? '…' : '') + '</div>' : '') +
+      '</td>' +
+      '<td style="font-size:11px;max-width:110px;">' + (item.link ? '<a href="' + esc(item.link) + '" target="_blank" style="color:var(--accent);word-break:break-all;">' + esc(shortLink) + '</a>' : '<span style="color:var(--muted)">–</span>') + '</td>' +
+      '<td>' + bereichTag(item.bereich) + '</td>' +
+      '<td style="font-size:12px;">' + (esc(item.kontakt) || '<span style="color:var(--muted)">–</span>') + '</td>' +
+      '<td style="font-size:12px;">' + (item.email ? '<a href="mailto:' + esc(item.email) + '" style="color:var(--accent)">' + esc(item.email) + '</a>' : '<span style="color:var(--muted)">–</span>') + '</td>' +
+      '<td>' + statusBadge(item.status) + '</td>' +
+      '<td><button class="btn btn-sm" onclick="openItem('' + item.id + '')">Öffnen →</button></td>' +
+      '</tr>';
+  }).join('');
 }
 
 function renderStats() {
   const bar = document.getElementById('stats-bar');
   bar.style.display = 'flex';
-  document.getElementById('stat-total').textContent = items.length;
-  document.getElementById('stat-neu').textContent = items.filter(i=>i.status==='Neu').length;
+  document.getElementById('tabs').style.display = 'flex';
+  const aktiv = items.filter(i => i.status !== 'Verloren');
+  document.getElementById('stat-total').textContent = aktiv.length;
+  document.getElementById('stat-neu').textContent = aktiv.filter(i=>i.status==='Neu').length;
   document.getElementById('stat-recherchiert').textContent = items.filter(i=>i.status==='Recherchiert'||i.status==='Mail bereit').length;
   document.getElementById('stat-gesendet').textContent = items.filter(i=>i.status==='Gesendet').length;
 }
@@ -407,7 +434,7 @@ function bereichTag(b) {
   return `<span class="sparte-tag">${icon} ${esc(b)}</span>`;
 }
 function statusBadge(s) {
-  const map = { 'neu':'badge-neu','recherchiert':'badge-recherchiert','mail bereit':'badge-mail','gesendet':'badge-gesendet','fehler':'badge-fehler' };
+  const map = { 'Neu':'badge-neu','Recherchiert':'badge-recherchiert','Mail bereit':'badge-mail','Gesendet':'badge-gesendet','Fehler':'badge-fehler','Verloren':'badge-verloren' };
   const cls = map[s] || 'badge-neu';
   return `<span class="badge ${cls}">${esc(s)}</span>`;
 }
@@ -459,6 +486,12 @@ function renderPanel() {
       <div class="progress-log" id="r-log"></div>
     </div>
 
+    <div class="section">
+      <div class="section-title">Bemerkungen / Rückmeldung Kunde</div>
+      <textarea id="bemerkungen-field" style="width:100%;min-height:80px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;font-family:inherit;resize:vertical;" placeholder="Rückmeldung vom Kunden, Notizen...">${esc(item.bemerkungen)||''}</textarea>
+      <button class="btn btn-sm" onclick="saveBemerkungen()" style="margin-top:6px;">💾 Bemerkungen speichern</button>
+    </div>
+
     ${item.mailEntwurf ? `
       <div class="section">
         <div class="section-title">Mail-Entwurf</div>
@@ -478,6 +511,7 @@ function renderPanel() {
       <button class="btn" onclick="mailKopieren()">📋 Kopieren</button>
     ` : ''}
     <button class="btn btn-green" onclick="markiereGesendet()">✅ Gesendet</button>
+    <button class="btn" onclick="markiereVerloren()" style="background:#555;color:white;border-color:#555;">✗ Verloren</button>
   `;
 }
 
@@ -664,6 +698,26 @@ function mailKopieren() {
   const mail = document.getElementById('mail-entwurf')?.value || currentItem?.mailEntwurf || '';
   navigator.clipboard.writeText(mail).then(() => toast('Mail kopiert ✓'));
 }
+async function saveBemerkungen() {
+  if (!currentItem) return;
+  currentItem.bemerkungen = document.getElementById('bemerkungen-field')?.value || '';
+  await saveItem(currentItem);
+  renderTable();
+  showToast('Bemerkungen gespeichert ✓');
+}
+
+async function markiereVerloren() {
+  if (!currentItem) return;
+  const bem = document.getElementById('bemerkungen-field')?.value || '';
+  if (bem) currentItem.bemerkungen = bem;
+  currentItem.status = 'Verloren';
+  await saveItem(currentItem);
+  renderTable();
+  renderStats();
+  closePanel();
+  showToast('Als verloren markiert');
+}
+
 async function markiereGesendet() {
   if (!currentItem) return;
   const entwurf = document.getElementById('mail-entwurf');
