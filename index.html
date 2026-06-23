@@ -369,22 +369,30 @@ function parseItem(item, siteId, listId) {
 async function saveItem(item) {
   if (!item._siteId || !item._listId || !item._itemId) return;
   const body = {
-    Kontakt:      item.kontakt,
-    Funktion:     item.funktion,
-    Email:        item.email,
-    Telefon:      item.telefon,
-    Recherche:    item.recherche,
-    'Bild_x0020_Link': item.bildLink,
-    MailEntwurf:  item.mailEntwurf,
-    Status:       item.status,
-    Bemerkungen:  item.bemerkungen
+    Kontakt:      item.kontakt || null,
+    Funktion:     item.funktion || null,
+    Email:        item.email || null,
+    Telefon:      item.telefon || null,
+    Recherche:    item.notizen || item.recherche || null,
+    MailEntwurf:  item.mailEntwurf || null,
+    Status:       item.status || null,
+    Bemerkungen:  item.bemerkungen || null
   };
-  // Entferne leere Felder
+  // Entferne null/leere Felder
   Object.keys(body).forEach(k => { if (!body[k]) delete body[k]; });
+  console.log('Speichere Felder:', Object.keys(body));
   try {
     const r = await gf(`/sites/${item._siteId}/lists/${item._listId}/items/${item._itemId}/fields`, 'PATCH', body);
-    if (r.error) console.warn('Speichern:', r.error.message);
-  } catch(e) { console.warn('Speichern fehlgeschlagen:', e); }
+    if (r.error) {
+      console.error('Speichern Fehler:', r.error.message, r.error);
+      toast('Fehler beim Speichern: ' + r.error.message);
+    } else {
+      console.log('Gespeichert OK');
+    }
+  } catch(e) { 
+    console.error('Speichern Exception:', e);
+    toast('Speichern fehlgeschlagen'); 
+  }
 }
 
 // ─── RENDER TABLE ──────────────────────────────────────────────────────────────
